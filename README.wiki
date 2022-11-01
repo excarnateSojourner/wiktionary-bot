@@ -1,0 +1,2 @@
+= Wiktionary Bot =
+Scripts that I want to run on [https://en.wiktionary.org/ Wiktionary] as [https://en.wiktionary.org/wiki/User:ExcarnateSojournerBot ExcarnateSojournerBot] via [https://wikitech.wikimedia.org/wiki/PAWS PAWS].
