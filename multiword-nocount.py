@@ -20,7 +20,7 @@ def main():
 		if page_count >= args.limit:
 			break
 		if ' ' in page.title():
-			page.text, replace_count = re.subn(r'(^\*+ {{IPA\|en(\|[^ |' + '\n' + r']*)+)}}', r'\1|nocount=1}}', page.text, flags=re.IGNORECASE | re.MULTILINE)
+			page.text, replace_count = re.subn(r'({{IPA\|en(\|((qual\d*|ref\d*|n\d*|sort)=)?[^ =|' + '\n' + r']*)+)}}', r'\1|nocount=1}}', page.text, flags=re.IGNORECASE)
 			if replace_count:
 				if args.dry_run:
 					with open(page.title().replace(' ', '_') + '.wiki', 'w') as page_file:
