@@ -36,6 +36,7 @@ def main():
 	for page in existing_cat.members():
 		if 0 <= args.limit <= count:
 			break
+		original_text = page.text
 		cats = set(pywikibot.textlib.getCategoryLinks(page.text, site=site))
 		if args.action == 'add':
 			if new_cat in cats:
@@ -54,15 +55,19 @@ def main():
 				print(f'Would save "{page.title()}" with categories: {cats}')
 		# the only other possiblility
 		elif args.action == 'replace':
-			if new_cat in cats:
-				print(f'"{page.title()}" is already in "{args.new_cat}", so I will just remove it from "{args.existing_cat}".')
-				page.text = pywikibot.textlib.replaceCategoryInPlace(page.text, existing_cat, newcat=None)
+			if exsiting_cat in cats:
+				if new_cat in cats:
+					print(f'"{page.title()}" is already in "{args.new_cat}", so I will just remove it from "{args.existing_cat}".')
+					page.text = pywikibot.textlib.replaceCategoryInPlace(page.text, existing_cat, newcat=None)
+				else:
+					# sort key is preserved
+					page.text = pywikibot.textlib.replaceCategoryInPlace(page.text, existing_cat, new_cat)
+				if args.dry_run:
+					print(f'Would change category "{args.existing_cat}" to "{args.new_cat}" in "{page.title()}".')
 			else:
-				# sort key is preserved
-				page.text = pywikibot.textlib.replaceCategoryInPlace(page.text, existing_cat, new_cat)
-			if args.dry_run:
-				print(f'Would change category "{args.existing_cat}" to "{args.new_cat}" in "{page.title()}".')
-		if not args.dry_run:
+				print(f'Warning: "{page.title()}" does not contain a category link that causes it to be in "{args.existing_cat}", so I\'m skipping it.')
+		# There's no risk of performing a null edit here, but we shouldn't print if no edit is being performed.
+		if not args.dry_run and page.text != original_text:
 			page.save(summary=args.summary, botflag=True, quiet=not args.verbose)
 		count += 1
 
