@@ -41,6 +41,10 @@ def main():
 					else:
 						print(f'Moving {page.title(as_link=True)} to [[{new_title}]].')
 						page.move(new_title, reason=move_summary)
+						# prepare to read through the new page
+						page = pywikibot.page.Page(site, new_title)
+						parsed_page = wikitextparser.parse(page.text)
+						sections = parsed_page.get_sections(level=2)
 
 				# Replace in page text
 				section_lines = sections[0].contents.splitlines()
@@ -59,7 +63,7 @@ def main():
 						with open(f'{i}-{page.title()}.wiki', 'w') as saveFile:
 							saveFile.write(page.text)
 					else:
-							page.save(summary=text_summary, botflag=True, quiet=False)
+						page.save(summary=text_summary, botflag=True, quiet=False)
 			else:
 				print(page.title(), file=skipped_file)
 
