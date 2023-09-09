@@ -55,13 +55,11 @@ def main():
 				if section_sub_count:
 					sections[0].contents = '\n'.join(section_lines)
 					page.text = str(parsed_page)
-					save = input(f'Save changes?\n==> ')
-					if save.casefold().startswith('y'):
-						if args.dry_run:
-							with open(f'{i}-{page.title()}.wiki', 'w') as saveFile:
-								saveFile.write(page.text)
-						else:
-								page.save(summary=text_summary, botflag=True, quiet=False)
+					if args.dry_run:
+						with open(f'{i}-{page.title()}.wiki', 'w') as saveFile:
+							saveFile.write(page.text)
+					else:
+							page.save(summary=text_summary, botflag=True, quiet=False)
 			else:
 				print(page.title(), file=skipped_file)
 
