@@ -61,7 +61,7 @@ def main():
 							with open(f'{i}-{page.title()}.wiki', 'w') as saveFile:
 								saveFile.write(page.text)
 						else:
-								page.save(summary=text_summary, botFlag=True, quiet=False)
+								page.save(summary=text_summary, botflag=True, quiet=False)
 			else:
 				print(page.title(), file=skipped_file)
 
