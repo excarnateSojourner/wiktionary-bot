@@ -12,7 +12,7 @@ import wikitextparser
 
 quote_mark = '\N{RIGHT SINGLE QUOTATION MARK}'
 mod_letter = '\N{MODIFIER LETTER APOSTROPHE}'
-move_summary = 'Replace curly quotes (U+2019) with modifier letter apostrophes (U+02BC) ([[Wiktionary:Requests for moves, mergers and splits#Entries in CAT:Taos lemmas with curly apostrophes|discussion]] | [https://github.com/excarnateSojourner/wiktionary-bot/blob/master/taos_apostrophes.py script]).'
+move_summary = 'Replace curly quotes (U+2019) with modifier letter apostrophes (U+02BC) per [[Wiktionary:Requests for moves, mergers and splits#Entries in CAT:Taos lemmas with curly apostrophes|discussion]].'
 text_summary = move_summary
 category_names = ['Taos lemmas', 'Taos non-lemma forms', 'Taos noun forms']
 
