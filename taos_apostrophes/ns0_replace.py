@@ -35,7 +35,7 @@ def main():
 		page_modified = False
 		print(f'Reading {page.title(as_link=True)}...')
 		for i, line in enumerate(page_lines):
-			page_lines[i], sub_count = re.subn(r'(\{\{[^}]*?\|twf\|[^}]*?)' + quote_mark + r'([^}]*?\}\})', r'\1' + mod_letter + r'\2', line)
+			page_lines[i], sub_count = re.subn(r'(\{\{[^}]*?\|twf\|)([^}]*?)(\}\})', sub_replace, line)
 			if sub_count:
 				page_modified = True
 				if args.verbose:
@@ -51,6 +51,9 @@ def main():
 			page_count += 1
 		else:
 			print(f'WARNING: Did not find any quotes to replace in {page.title(as_link=True)}.')
+
+def sub_replace(mat):
+	return f'{mat[1]}{mat[2].replace(quote_mark, mod_letter)}{mat[3]}'
 
 if __name__ == '__main__':
 	main()
