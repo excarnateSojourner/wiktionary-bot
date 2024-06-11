@@ -28,12 +28,7 @@ def main():
 	for cat in cats.values():
 		for other in cats.values():
 			if other != cat:
-				if args.verbose:
-					for page in cat & other:
-						cat.discard(page)
-						print(page.title())
-				else:
-					cat -= other
+				cat -= other
 
 	if args.verbose:
 		print('Adding syllable counts. Periods represent pages for which no action was taken.')
@@ -43,9 +38,10 @@ def main():
 			print(f'{syllable_count}-syllable words:')
 		for page in cat:
 			if 0 < args.limit <= hits:
-				break
+				print()
+				return
 			if re.fullmatch(r'[a-z]+', page.title(), flags=re.IGNORECASE):
-				page.text, page_hits = re.subn(r'^(\*+ {{rhymes?\|en' + TEMP_PARAMS_PATTERN + r')}}$', r'\1|s=' + str(syllable_count) + r'}}', page.text, flags=re.MULTILINE)
+				page.text, page_hits = re.subn(r'^(\*+ {{rhymes?\|en' + TEMP_PARAMS_PATTERN + r')}}', r'\1|s=' + str(syllable_count) + r'}}', page.text, flags=re.MULTILINE)
 				if page_hits:
 					hits += 1
 					if args.dry_run:
