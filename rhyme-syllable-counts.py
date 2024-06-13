@@ -1,4 +1,5 @@
 import argparse
+import collections
 import itertools
 import re
 
@@ -18,23 +19,27 @@ def main():
 
 	site = pywikibot.Site()
 	cats = {}
-	for syllable_count in range(1, (2 if args.limit or args.dry_run else 20)):
+	if args.verbose:
+		print('Collecting pages in all categories...')
+	for syllable_count in range(1, (2 if args.limit >= 0 or args.dry_run else 20)):
 		cat = pywikibot.Category(site, f'Category:English {syllable_count}-syllable words')
 		gen = pywikibot.pagegenerators.CategorizedPageGenerator(cat)
 		cats[syllable_count] = {page for page in (itertools.islice(gen, args.limit * 32) if args.limit >= 0 else gen)}
 
-# We want to exclude any terms that fall in multiple "English N-syllable words" categories.
+	# We want to exclude any terms that fall in multiple "English N-syllable words" categories.
 	if args.verbose:
-		print('Excluding entries that are in multiple categories:')
-	for cat in cats.values():
-		for other in cats.values():
-			if other != cat:
-				cat -= other
+		print('Excluding entries that are in multiple categories...')
+	deduped_cats = collections.defaultdict(set)
+	for syllable_count, cat in cats.items():
+		for page in cat:
+			if not any(page in other for other in cats.values() if other != cat):
+				deduped_cats[syllable_count].add(page)
+	del cats
 
 	if args.verbose:
 		print('Adding syllable counts. Periods represent pages for which no action was taken.')
 	hits = 0
-	for syllable_count, cat in cats.items():
+	for syllable_count, cat in deduped_cats.items():
 		if args.verbose:
 			print(f'=== {syllable_count}-syllable words ===\n')
 		while cat:
