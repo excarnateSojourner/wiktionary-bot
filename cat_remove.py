@@ -15,8 +15,8 @@ def main():
 	save_kwargs = {'summary': args.summary if 'summary' in args else None, 'botflag': True, 'quiet': not args.verbose}
 
 	cat = wiktionary_cats.WiktionaryCat(args.base_name, args.lang_code, args.lang_name, args.topic)
-	for page in cat.to_generator():
-		cat.remove_one(page)
+	for page in cat.pages():
+		cat.remove_one(page, verbose=args.verbose)
 		if args.dry_run:
 			with open(page.title().casefold().replace('/', '_').replace(' ', '_') + '.wiki', 'w', encoding='utf-8') as outFile:
 				outFile.write(page.text)

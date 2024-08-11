@@ -1,5 +1,4 @@
 import argparse
-from typing import Optional
 
 import pywikibot
 
@@ -22,32 +21,10 @@ def main():
 	parser.add_argument('-v', '--verbose', action='store_true')
 	args = parser.parse_args()
 
-	src_cat = wiktionary_cats.WiktionaryCat(args.src_base_name, args.src_lang_code, args.src_lang_name, args.src_topic)
-	dst_cat = wiktionary_cats.WiktionaryCat(args.dst_base_name, args.dst_lang_code or args.src_lang_code, args.dst_lang_name or args.src_lang_name, args.dst_topic)
-	move(src_cat, dst_cat, page=args.page, summary=args.summary, dry_run=args.dry_run, limit=args.limit, verbose=args.verbose)
-
-def move(src_cat: wiktionary_cats.WiktionaryCat, dst_cat: wiktionary_cats.WiktionaryCat, page: bool = False, summary: Optional[str] = None, dry_run: bool = False, limit: int = -1, verbose: bool = False):
-
-	if page:
+	if args.page:
 		wiktionary_cats.move_or_redirect_cat_page(src_cat.full_name, dst_cat.full_name, summary=summary, dry_run=dry_run)
-
-	count = 0
-	for page in src_cat.to_generator():
-		if 0 < limit <= count:
-			break
-		try:
-			sortKey = src_cat.remove_one(page, verbose=verbose)
-			dst_cat.add_one(page, sortKey=sortKey)
-		except ValueError as er:
-			print(er)
-			continue
-		if dry_run:
-			with open(page.title().replace(' ', '_'), 'w') as outFile:
-				outFile.write(page.text)
-		else:
-			page.save(summary=summary, botflag=True, quiet=not verbose)
-		count += 1
-	return count
+	src_cat = wiktionary_cats.LangCat(args.src_base_name, args.src_lang_code, args.src_lang_name, args.src_topic)
+	src_cat.move(args.dst_base_name, args.dst_topic, summary=args.summary, dry_run=args.dry_run, limit=args.limit, verbose=args.verbose)
 
 if __name__ == '__main__':
 	main()
