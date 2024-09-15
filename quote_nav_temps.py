@@ -11,7 +11,7 @@ import wikitextparser
 def main():
 	parser = argparse.ArgumentParser()
 	parser.add_argument('-d', '--dry-run', action='store_true')
-	parser.add_argument('-l', '--limit', type=int, default=-1)
+	parser.add_argument('-l', '--limit', type=int, default=10 ** 9)
 	args = parser.parse_args()
 
 	site = pywikibot.Site()
@@ -29,24 +29,29 @@ def main():
 				args.limit -= 1
 				doc_page = pywikibot.Page(site, temp_title + '/documentation')
 				doc_text = doc_page.text
+
+				# Remove [[cat:Navigation templates]]
 				nav_cat_match = re.search(r'\[\[Category:Navigation templates(?:\|(.*?))?\]\]\n', doc_text)
+				if nav_cat_match:
+					doc_text = doc_text[:nav_cat_match.start()] + doc_text[nav_cat_match.end():]
+				# Replace [[cat:English quotation templates]] with [[cat:English quotation navigation templates]]
 				quote_cat_match = re.search(r'\[\[' + lang_quote_cat.title() + r'(?:\|(.*?))?\]\]\n', doc_text)
-				if nav_cat_match and quote_cat_match:
-					cat_spans = sorted([nav_cat_match.span(), quote_cat_match.span()])
-					doc_text = doc_text[:cat_spans[0][0]] + '[[' + lang_quote_nav_cat_title + ']]\n' + doc_text[cat_spans[0][1]:cat_spans[1][0]] + doc_text[cat_spans[1][1]:]
+				if quote_cat_match:
+					doc_text = doc_text[:quote_cat_match.start()] + '[[' + lang_quote_nav_cat_title + ']]\n' + doc_text[quote_cat_match.end():]
 				else:
-					print(f'Error: Could not find category links at {doc_page.title()}')
+					print(f'\n===\nError: Could not find language-specific quotation category link at {doc_page.title()}\n===\n')
 					continue
+				# Update sort key
 				defaultsort_match = re.search(r'\{\{DEFAULTSORT:(.*?)\}\}', doc_text)
 				if defaultsort_match:
 					sort_key = defaultsort_match[1]
 					if sort_key.startswith('*'):
 						doc_text = doc_text[:defaultsort_match.start(1)] + sort_key.removeprefix('*') + doc_text[defaultsort_match.end(1):]
 					else:
-						print(f'Error: Found DEFAULTSORT for {doc_page.title()}, but the sort key did not start with an asterisk.')
+						print(f'\n===\nError: Found DEFAULTSORT for {doc_page.title()}, but the sort key did not start with an asterisk.\n===\n')
 						continue
 				else:
-					print(f'Error: Could not find defaultsort for {doc_page.title()}.')
+					print(f'\n===\nError: Could not find defaultsort for {doc_page.title()}.\n===\n')
 					continue
 				if args.dry_run:
 					with open(doc_page.title(underscore=True, with_ns=False).removesuffix('_quotation_templates/documentation') + '.txt', 'w') as out_file:
