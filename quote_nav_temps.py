@@ -53,8 +53,12 @@ def main():
 						out_file.write(doc_text)
 				else:
 					doc_page.text = doc_text
-					doc_page.save(summary='Recategorize quotation navigation templates per [[Wiktionary:Beer parlour/2024/September#Recategorizing quotation navigation templates by bot|discussion]]', botflag=True)
+					doc_page.save(summary='Recategorize quotation navigation templates per [[Wiktionary:Beer parlour/2024/September#Recategorizing quotation navigation templates by bot|discussion]]', bot=True)
 				lang_quote_nav_count += 1
+
+				# Null edit so the template appears in the quotation navigation category
+				if not args.dry_run:
+					pywikibot.Page(site, temp_title).touch(bot=True)
 
 		# Create [[cat:English quotation navigation templates]] if necessary
 		if lang_quote_nav_count:
@@ -64,7 +68,7 @@ def main():
 					print(f'Would create {lang_quote_nav_cat_title}')
 				else:
 					lang_quote_nav_cat.text = '{{auto cat}}\n'
-					lang_quote_nav_cat.save(summary='Recategorize quotation navigation templates per [[Wiktionary:Beer parlour/2024/September#Recategorizing quotation navigation templates by bot|discussion]]', botflag=True)
+					lang_quote_nav_cat.save(summary='Recategorize quotation navigation templates per [[Wiktionary:Beer parlour/2024/September#Recategorizing quotation navigation templates by bot|discussion]]', bot=True)
 				args.limit -= 1
 		if args.limit <= 0:
 			break
