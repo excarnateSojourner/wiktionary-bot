@@ -47,9 +47,6 @@ def main():
 					sort_key = defaultsort_match[1]
 					if sort_key.startswith('*'):
 						doc_text = doc_text[:defaultsort_match.start(1)] + sort_key.removeprefix('*') + doc_text[defaultsort_match.end(1):]
-					else:
-						print(f'\n===\nError: Found DEFAULTSORT for {doc_page.title()}, but the sort key did not start with an asterisk.\n===\n')
-						continue
 				else:
 					print(f'\n===\nError: Could not find defaultsort for {doc_page.title()}.\n===\n')
 					continue
