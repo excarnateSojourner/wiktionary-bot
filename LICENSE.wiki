@@ -1,3 +1,9 @@
+= License =
+All Python scripts (files with the <code>py</code> extension), the README, and this license file are released into the public domain via the Unlicense, provided below.
+
+All other files in this repository are derivative works of data from the [https://en.wiktionary.org/ English Wiktionary] (downloaded [https://dumps.wikimedia.org/ from Wikimedia Downloads]), and are therefore licensed under the [https://creativecommons.org/licenses/by-sa/3.0/legalcode Creative Commons Attribution-ShareAlike 3.0 Unported License] ([https://creativecommons.org/licenses/by-sa/3.0/ easily readable summary]). This data was created cooperatively by thousands of editors; here is a [https://en.wiktionary.org/wiki/Special:ListUsers?editsOnly=1&creationSort=1 complete list].
+
+== Unlicense ==
 This is free and unencumbered software released into the public domain.
 
 Anyone is free to copy, modify, publish, use, compile, sell, or
