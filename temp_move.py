@@ -39,8 +39,6 @@ def main():
 			print(page_count, flush=True)
 
 		wikitext = wikitextparser.parse(page.text)
-		if args.language:
-			wikitext = next(sec for sec in wikitext.get_sections(level=2) if sec.title == args.language)
 		target_temps = [temp for temp in wikitext.templates if temp.normal_name() == args.old_name]
 		if not target_temps:
 			continue
