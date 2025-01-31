@@ -44,28 +44,12 @@ def main():
 			print(f'Warning: Skipping {title} because its language would not be titlecased.')
 			continue
 		new_title = 'Wiktionary:' + lang + ' entry guidelines'
-		automatable_redirects = []
-		manual_redirect_titles = []
-		for redirect in page.redirects():
-			red_title = redirect.title()
-			if re.fullmatch(r'Wiktionary:A[A-Z]{2,3}(-[A-Z]{3})?', red_title):
-				automatable_redirects.append(redirect)
-			else:
-				manual_redirect_titles.append(red_title)
-		# Find only direct links from pages (not redirects or pages that link to redirects)
-		backlink_titles = [bl.title() for bl in page.backlinks(follow_redirects=False, filter_redirects=False)]
-		backlink_titles = [bl for bl in backlink_titles if is_backlink_problematic(bl, lang)]
-		if manual_redirect_titles or backlink_titles:
-			print(f'Stopping at {title} because it has the following backlinks that may need to be manually updated:')
-			if manual_redirect_titles:
-				print('\tRedirects:')
-				for red in manual_redirect_titles:
-					print(f'\t\t{red}')
-			if backlink_titles:
-				print('\tPages:')
-				for bl in backlink_titles:
-					print(f'\t\t{bl}')
-			print('What now? (m = move it and wait for manual backlink updates; s = skip; q = quit)')
+		backlinks = [bl for bl in page.backlinks(follow_redirects=False) if is_backlink_problematic(bl.title(), lang)]
+		if backlinks:
+			print(f'Stopping at {title} because it has the following backlinks:')
+			for bl in backlinks:
+				print(f'\t{bl.title()}')
+			print('What now? (m = move it and and update backlinks; s = skip; q = quit)')
 			action = input('==> ').casefold()
 			if action.startswith('s'):
 				continue
@@ -82,14 +66,10 @@ def main():
 			new_page = pywikibot.Page(site, new_title)
 		move_count += 1
 
-		# Update language code redirects
-		for red in automatable_redirects:
-			wikitext = wikitextparser.parse(red.text)
-			original_text = wikitext.string
-			red_link = next(link for link in wikitext.wikilinks if link.title == title)
-			# Modifies wikitext
-			red_link.title = new_title
-			edit(red, original_text, wikitext.string, REDIRECT_SUMMARY, dry_run=args.dry_run)
+		# Update backlinks
+		for bl in backlinks:
+			is_lang_code_redirect = bool(re.fullmatch(r'Wiktionary:A[A-Z]{2,3}(-[A-Z]{3})?', bl.title()))
+			update_links(bl, title, new_title, skip_confirmation=is_lang_code_redirect, dry_run=args.dry_run)
 
 		# Remove redundant sort key
 		wikitext = wikitextparser.parse(new_page.text)
@@ -101,18 +81,26 @@ def main():
 			continue
 		# Modifies wikitext
 		cat_link.string = f'[[{LANG_CONS_CAT_TITLE}]]'
-		edit(new_page, original_text, wikitext.string, SORT_KEY_SUMMARY, dry_run=args.dry_run)
+		edit(new_page, original_text, wikitext.string, SORT_KEY_SUMMARY, skip_confirmation=True, dry_run=args.dry_run)
 
 		# Confirm that all backlinks have been addressed
-		if manual_redirect_titles or backlink_titles:
-			print('Waiting for manual backlink updates.')
-			input('==>')
 		remaining_backlinks = page.backlinks(follow_redirects=False)
 		print(f'The following backlinks to {title} remain:')
 		for bl in remaining_backlinks:
 			print(f'\t{bl.title()}')
+		print()
 
-def edit(page, original_text, new_text, summary, dry_run=False):
+def update_links(page: pywikibot.Page, old_target: str, new_target: str, skip_confirmation: bool = False, dry_run: bool = False) -> None:
+	wikitext = wikitextparser.parse(page.text)
+	original_text = wikitext.string
+	for link in wikitext.wikilinks:
+		if link.title == old_target:
+			# Modifies wikitext
+			link.title = new_target
+	summary = REDIRECT_SUMMARY if original_text[:9].casefold() == '#redirect' else f'Updated links to [[{new_target}]]'
+	edit(page, original_text, wikitext.string, summary, skip_confirmation, dry_run)
+
+def edit(page: pywikibot.Page, original_text: str, new_text: str, summary: str, skip_confirmation: bool = False, dry_run: bool = False) -> None:
 	title = page.title()
 	diff = difflib.unified_diff(original_text.splitlines(keepends=True), new_text.splitlines(keepends=True), n=1)
 	if dry_run:
@@ -122,11 +110,17 @@ def edit(page, original_text, new_text, summary, dry_run=False):
 	for line in diff:
 		print(f'\t{line}')
 	print()
+	print(f'Summary: {summary}')
 	if not dry_run:
+		if not skip_confirmation:
+			print(f'Save edit? (y/n)')
+			confirmation = input('==> ').casefold()
+			if not confirmation.startswith('y'):
+				return
 		page.text = new_text
 		page.save(summary=summary)
 
-def is_backlink_problematic(backlink, lang):
+def is_backlink_problematic(backlink: str, lang: str) -> bool:
 	for good_prefix in ACCEPTABLE_BACKLINK_PREFIXES:
 		if backlink.startswith(good_prefix):
 			return False
