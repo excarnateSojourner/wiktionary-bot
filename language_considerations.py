@@ -35,18 +35,18 @@ def main():
 			continue
 		title_lower = title.casefold()
 		if not title.startswith('Wiktionary:About ') or any(banned in title_lower for banned in BANNED_TITLE_PARTS):
-			print(f'Warning: Skipping {title} because its title does not fit the expected pattern.')
+			print(f'Note: Skipping {title} because its title does not fit the expected pattern.')
 			continue
 		lang = title.removeprefix('Wiktionary:About ')
 		if lang in args.skip:
 			continue
 		if any(word[0].islower() for word in lang.split()):
-			print(f'Warning: Skipping {title} because its language would not be titlecased.')
+			print(f'Note: Skipping {title} because its language would not be titlecased.')
 			continue
 		new_title = 'Wiktionary:' + lang + ' entry guidelines'
 		backlinks = [bl for bl in page.backlinks(follow_redirects=False) if is_backlink_problematic(bl.title(), lang)]
 		if backlinks:
-			print(f'Stopping at {title} because it has the following backlinks:')
+			print(f'\nStopping at {title} because it has the following backlinks:')
 			for bl in backlinks:
 				print(f'\t{bl.title()}')
 			print('What now? (m = move it and and update backlinks; s = skip; q = quit)')
@@ -62,7 +62,11 @@ def main():
 			new_page = page
 		else:
 			print(f'Moving [[{title}]] to [[{new_title}]].')
-			page.move(new_title, reason=MOVE_SUMMARY)
+			try:
+				page.move(new_title, reason=MOVE_SUMMARY)
+			except pywikibot.exceptions.LockedPageError:
+				print(f'Warning: Skipping {title} because the page is protected (so I can\'t move it).')
+				continue
 			new_page = pywikibot.Page(site, new_title)
 		move_count += 1
 
@@ -88,7 +92,6 @@ def main():
 		print(f'The following backlinks to {title} remain:')
 		for bl in remaining_backlinks:
 			print(f'\t{bl.title()}')
-		print()
 
 def update_links(page: pywikibot.Page, old_target: str, new_target: str, skip_confirmation: bool = False, dry_run: bool = False) -> None:
 	wikitext = wikitextparser.parse(page.text)
@@ -98,7 +101,8 @@ def update_links(page: pywikibot.Page, old_target: str, new_target: str, skip_co
 			# Modifies wikitext
 			link.title = new_target
 	summary = REDIRECT_SUMMARY if original_text[:9].casefold() == '#redirect' else f'Updated links to [[{new_target}]]'
-	edit(page, original_text, wikitext.string, summary, skip_confirmation, dry_run)
+	if not edit(page, original_text, wikitext.string, summary, skip_confirmation, dry_run):
+		print(f'\tWarning: Unable to find raw link to {old_target} at {page.title()}.')
 
 def edit(page: pywikibot.Page, original_text: str, new_text: str, summary: str, skip_confirmation: bool = False, dry_run: bool = False) -> None:
 	title = page.title()
@@ -107,6 +111,8 @@ def edit(page: pywikibot.Page, original_text: str, new_text: str, summary: str, 
 		print(f'Would make the following edit at {title}:')
 	else:
 		print(f'Making the following edit at {title}:')
+	if not diff:
+		return False
 	for line in diff:
 		print(f'\t{line}')
 	print()
