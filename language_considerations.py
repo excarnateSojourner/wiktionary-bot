@@ -72,7 +72,11 @@ def main():
 
 		# Update backlinks
 		for bl in backlinks:
-			is_lang_code_redirect = bool(re.fullmatch(r'Wiktionary:A[A-Z]{2,3}(-[A-Z]{3})?', bl.title()))
+			bl_title = bl.title()
+			if bl_title.startswith('Template:'):
+				print(f'Warning: {bl_title} links to {title}, but I am not going to touch it since it\'s a template.')
+				continue
+			is_lang_code_redirect = bool(re.fullmatch(r'Wiktionary:A[A-Z]{2,3}(-[A-Z]{3})?', bl_title))
 			update_links(bl, title, new_title, skip_confirmation=is_lang_code_redirect, dry_run=args.dry_run)
 
 		# Remove redundant sort key
@@ -83,9 +87,15 @@ def main():
 		except StopIteration:
 			print(f'Warning: Unable to find category link in {new_title} to {LANG_CONS_CAT_TITLE}.')
 			continue
+		old_sort_key = cat_link.text
 		# Modifies wikitext
 		cat_link.string = f'[[{LANG_CONS_CAT_TITLE}]]'
-		edit(new_page, original_text, wikitext.string, SORT_KEY_SUMMARY, skip_confirmation=True, dry_run=args.dry_run)
+		lang_lower = lang.casefold()
+		# Middle Dutch had "Dutch, Middle" as its sort key, which should have been preserved
+		if old_sort_key == lang:
+			edit(new_page, original_text, wikitext.string, SORT_KEY_SUMMARY, skip_confirmation=True, dry_run=args.dry_run)
+		else:
+			print(f'Note: The language consideration page\'s sort key is "{old_sort_key}", which does not match the language ({lang}), so I am NOT going to attempt to remove the sort key.')
 
 		# Confirm that all backlinks have been addressed
 		remaining_backlinks = page.backlinks(follow_redirects=False)
@@ -102,9 +112,14 @@ def update_links(page: pywikibot.Page, old_target: str, new_target: str, skip_co
 			link.title = new_target
 	summary = REDIRECT_SUMMARY if original_text[:9].casefold() == '#redirect' else f'Updated links to [[{new_target}]]'
 	if not edit(page, original_text, wikitext.string, summary, skip_confirmation, dry_run):
-		print(f'\tWarning: Unable to find raw link to {old_target} at {page.title()}.')
+		print(f'\tWarning: Unable to update the link to {old_target} at {page.title()}.')
 
 def edit(page: pywikibot.Page, original_text: str, new_text: str, summary: str, skip_confirmation: bool = False, dry_run: bool = False) -> None:
+	'''summary: The edit summary to pass to page.save().
+	original_text: The entire text of the page before the edit was made. This is used to produce a diff of the changes made.
+	skip_confirmation (default False): Do not ask for confirmation before saving the edit. This value is ignored and no confirmation is asked for if dry_run is True.
+	dry_run (default False): Do not save the edit; just preview it.'''
+
 	title = page.title()
 	diff = difflib.unified_diff(original_text.splitlines(keepends=True), new_text.splitlines(keepends=True), n=1)
 	if dry_run:
@@ -125,6 +140,7 @@ def edit(page: pywikibot.Page, original_text: str, new_text: str, summary: str, 
 				return
 		page.text = new_text
 		page.save(summary=summary)
+	return True
 
 def is_backlink_problematic(backlink: str, lang: str) -> bool:
 	for good_prefix in ACCEPTABLE_BACKLINK_PREFIXES:
