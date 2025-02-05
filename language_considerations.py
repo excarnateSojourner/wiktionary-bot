@@ -14,6 +14,7 @@ BANNED_TITLE_PARTS = ['/', 'language', 'script', 'transliteration']
 # Reconstruction backlinks are acceptable because because [[Template:reconstructed]] links to the language consideration page for the term's language, causing every term in a reconstructed language to be a backlink
 ACCEPTABLE_BACKLINK_PREFIXES = ['Talk:', 'User:', 'Reconstruction:', 'Wiktionary:Beer parlour', 'Wiktionary:Etymology scriptorium', 'Wiktionary:Information desk', 'Wiktionary:Grease pit', 'Wiktionary:Tea room', 'Wiktionary:Requests for ', 'Wiktionary:Translation requests/archive', 'Wiktionary:News for editors/Archive', 'Wiktionary:Votes/']
 LANG_CONS_CAT_TITLE = 'Category:Wiktionary language considerations'
+BACKLINK_DISPLAY_MAX = 200
 
 def main():
 	parser = argparse.ArgumentParser()
@@ -47,8 +48,10 @@ def main():
 		backlinks = [bl for bl in page.backlinks(follow_redirects=False) if is_backlink_problematic(bl.title(), lang)]
 		if backlinks:
 			print(f'\nStopping at {title} because it has the following backlinks:')
-			for bl in backlinks:
+			for bl in backlinks[:BACKLINK_DISPLAY_MAX]:
 				print(f'\t{bl.title()}')
+			if len(backlinks) > BACKLINK_DISPLAY_MAX:
+				print(f'Warning: {len(backlinks) - BACKLINK_DISPLAY_MAX} more backlinks not shown.')
 			print('What now? (m = move it and and update backlinks; s = skip; q = quit)')
 			action = input('==> ').casefold()
 			if action.startswith('s'):
@@ -98,10 +101,12 @@ def main():
 			print(f'Note: The language consideration page\'s sort key is "{old_sort_key}", which does not match the language ({lang}), so I am NOT going to attempt to remove the sort key.')
 
 		# Confirm that all backlinks have been addressed
-		remaining_backlinks = page.backlinks(follow_redirects=False)
+		remaining_backlinks = list(page.backlinks(follow_redirects=False))
 		print(f'The following backlinks to {title} remain:')
-		for bl in remaining_backlinks:
+		for bl in remaining_backlinks[:BACKLINK_DISPLAY_MAX]:
 			print(f'\t{bl.title()}')
+		if len(remaining_backlinks) > BACKLINK_DISPLAY_MAX:
+			print(f'Warning: {len(remaining_backlinks) - BACKLINK_DISPLAY_MAX} more backlinks not shown.')
 
 def update_links(page: pywikibot.Page, old_target: str, new_target: str, skip_confirmation: bool = False, dry_run: bool = False) -> None:
 	wikitext = wikitextparser.parse(page.text)
@@ -137,9 +142,13 @@ def edit(page: pywikibot.Page, original_text: str, new_text: str, summary: str, 
 			print(f'Save edit? (y/n)')
 			confirmation = input('==> ').casefold()
 			if not confirmation.startswith('y'):
-				return
+				return False
 		page.text = new_text
-		page.save(summary=summary)
+		try:
+			page.save(summary=summary)
+		except pywikibot.exceptions.LockedPageError:
+			print(f'Error: Unable to save edit at {title} because the page is protected.')
+			return False
 	return True
 
 def is_backlink_problematic(backlink: str, lang: str) -> bool:
