@@ -6,6 +6,8 @@ import pywikibot
 import pywikibot.pagegenerators
 import wikitextparser
 
+import advanced_move
+
 MOVE_SUMMARY = 'Moved to match the title of [[Wiktionary:English entry guidelines]] per [[Wiktionary talk:English entry guidelines#RFM discussion: November 2015–August 2018|old RFM]] and [[Wiktionary:Requests for moves, mergers and splits#Wiktionary:English entry guidelines vs "About (language)" in every other language|new RFM]]'
 REDIRECT_SUMMARY = 'Moved target to match the title of [[Wiktionary:English entry guidelines]] per [[Wiktionary talk:English entry guidelines#RFM discussion: November 2015–August 2018|old RFM]] and [[Wiktionary:Requests for moves, mergers and splits#Wiktionary:English entry guidelines vs "About (language)" in every other language|new RFM]]'
 SORT_KEY_SUMMARY = 'Removed redundant sort key'
@@ -66,11 +68,10 @@ def main():
 		else:
 			print(f'Moving [[{title}]] to [[{new_title}]].')
 			try:
-				page.move(new_title, reason=MOVE_SUMMARY)
+				new_page = page.move(new_title, reason=MOVE_SUMMARY)
 			except pywikibot.exceptions.LockedPageError:
 				print(f'Warning: Skipping {title} because the page is protected (so I can\'t move it).')
 				continue
-			new_page = pywikibot.Page(site, new_title)
 		move_count += 1
 
 		# Update backlinks
@@ -96,7 +97,7 @@ def main():
 		lang_lower = lang.casefold()
 		# Middle Dutch had "Dutch, Middle" as its sort key, which should have been preserved
 		if old_sort_key == lang:
-			edit(new_page, original_text, wikitext.string, SORT_KEY_SUMMARY, skip_confirmation=True, dry_run=args.dry_run)
+			advanced_move.edit(new_page, original_text, wikitext.string, SORT_KEY_SUMMARY, skip_confirmation=True, dry_run=args.dry_run)
 		else:
 			print(f'Note: The language consideration page\'s sort key is "{old_sort_key}", which does not match the language ({lang}), so I am NOT going to attempt to remove the sort key.')
 
@@ -116,40 +117,8 @@ def update_links(page: pywikibot.Page, old_target: str, new_target: str, skip_co
 			# Modifies wikitext
 			link.title = new_target
 	summary = REDIRECT_SUMMARY if original_text[:9].casefold() == '#redirect' else f'Updated links to [[{new_target}]]'
-	if not edit(page, original_text, wikitext.string, summary, skip_confirmation, dry_run):
+	if not advanced_move.edit(page, original_text, wikitext.string, summary, skip_confirmation, dry_run):
 		print(f'\tWarning: Unable to update the link to {old_target} at {page.title()}.')
-
-def edit(page: pywikibot.Page, original_text: str, new_text: str, summary: str, skip_confirmation: bool = False, dry_run: bool = False) -> None:
-	'''summary: The edit summary to pass to page.save().
-	original_text: The entire text of the page before the edit was made. This is used to produce a diff of the changes made.
-	skip_confirmation (default False): Do not ask for confirmation before saving the edit. This value is ignored and no confirmation is asked for if dry_run is True.
-	dry_run (default False): Do not save the edit; just preview it.'''
-
-	title = page.title()
-	diff = difflib.unified_diff(original_text.splitlines(keepends=True), new_text.splitlines(keepends=True), n=1)
-	if dry_run:
-		print(f'Would make the following edit at {title}:')
-	else:
-		print(f'Making the following edit at {title}:')
-	if not diff:
-		return False
-	for line in diff:
-		print(f'\t{line}')
-	print()
-	print(f'Summary: {summary}')
-	if not dry_run:
-		if not skip_confirmation:
-			print(f'Save edit? (y/n)')
-			confirmation = input('==> ').casefold()
-			if not confirmation.startswith('y'):
-				return False
-		page.text = new_text
-		try:
-			page.save(summary=summary)
-		except pywikibot.exceptions.LockedPageError:
-			print(f'Error: Unable to save edit at {title} because the page is protected.')
-			return False
-	return True
 
 def is_backlink_problematic(backlink: str, lang: str) -> bool:
 	for good_prefix in ACCEPTABLE_BACKLINK_PREFIXES:
