@@ -6,7 +6,7 @@ import pywikibot
 import pywikibot.pagegenerators
 import wikitextparser
 
-import advanced_move
+import pywikibot_helpers
 
 MOVE_SUMMARY = 'Moved to match the title of [[Wiktionary:English entry guidelines]] per [[Wiktionary talk:English entry guidelines#RFM discussion: November 2015–August 2018|old RFM]] and [[Wiktionary:Requests for moves, mergers and splits#Wiktionary:English entry guidelines vs "About (language)" in every other language|new RFM]]'
 REDIRECT_SUMMARY = 'Moved target to match the title of [[Wiktionary:English entry guidelines]] per [[Wiktionary talk:English entry guidelines#RFM discussion: November 2015–August 2018|old RFM]] and [[Wiktionary:Requests for moves, mergers and splits#Wiktionary:English entry guidelines vs "About (language)" in every other language|new RFM]]'
@@ -68,7 +68,9 @@ def main():
 		else:
 			print(f'Moving [[{title}]] to [[{new_title}]].')
 			try:
-				new_page = page.move(new_title, reason=MOVE_SUMMARY)
+				# Move the page and its subpages (but leave backlinks for later)
+				pywikibot_helpers.advanced_move(page, new_title, MOVE_SUMMARY, backlinks='none', dry_run=args.dry_run)
+				new_page = pywikibot.Page(site, new_title)
 			except pywikibot.exceptions.LockedPageError:
 				print(f'Warning: Skipping {title} because the page is protected (so I can\'t move it).')
 				continue
@@ -97,7 +99,7 @@ def main():
 		lang_lower = lang.casefold()
 		# Middle Dutch had "Dutch, Middle" as its sort key, which should have been preserved
 		if old_sort_key == lang:
-			advanced_move.edit(new_page, original_text, wikitext.string, SORT_KEY_SUMMARY, skip_confirmation=True, dry_run=args.dry_run)
+			pywikibot_helpers.edit(new_page, wikitext.string, SORT_KEY_SUMMARY, skip_confirmation=True, dry_run=args.dry_run, indent='\t')
 		else:
 			print(f'Note: The language consideration page\'s sort key is "{old_sort_key}", which does not match the language ({lang}), so I am NOT going to attempt to remove the sort key.')
 
@@ -117,7 +119,7 @@ def update_links(page: pywikibot.Page, old_target: str, new_target: str, skip_co
 			# Modifies wikitext
 			link.title = new_target
 	summary = REDIRECT_SUMMARY if original_text[:9].casefold() == '#redirect' else f'Updated links to [[{new_target}]]'
-	if not advanced_move.edit(page, original_text, wikitext.string, summary, skip_confirmation, dry_run):
+	if not pywikibot_helpers.edit(page, wikitext.string, summary, skip_confirmation, dry_run, indent='\t'):
 		print(f'\tWarning: Unable to update the link to {old_target} at {page.title()}.')
 
 def is_backlink_problematic(backlink: str, lang: str) -> bool:

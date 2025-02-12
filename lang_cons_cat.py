@@ -7,7 +7,7 @@ import pywikibot.pagegenerators
 
 import wikitextparser
 
-import advanced_move
+import pywikibot_helpers
 
 DRY_RUN = False
 LANG_CONS_PREFIX = 'About '
@@ -23,7 +23,7 @@ def main():
 		if lang_cons_cat in page.categories():
 			continue
 		# Skip redirects
-		if startswith_casefold(page.text, REDIRECT_PREFIX):
+		if pywikibot_helpers.startswith_casefold(page.text, REDIRECT_PREFIX):
 			continue
 		lang = page.title(with_ns=False).removeprefix(LANG_CONS_PREFIX)
 		# Skip subpages
@@ -40,10 +40,7 @@ def main():
 		else:
 			cat_link = lang_cons_cat.aslink(sort_key=lang)
 		new_text = f'{page.text}\n{cat_link}'
-		advanced_move.edit(page, new_text, reason, dry_run=DRY_RUN)
-
-def startswith_casefold(st: str, prefix: str) -> bool:
-	return st[:len(prefix)].casefold() == prefix.casefold()
+		pywikibot_helpers.edit(page, new_text, reason, dry_run=DRY_RUN)
 
 if __name__ == '__main__':
 	main()
