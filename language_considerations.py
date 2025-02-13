@@ -38,18 +38,18 @@ def main():
 			continue
 		title_lower = title.casefold()
 		if not title.startswith('Wiktionary:About ') or any(banned in title_lower for banned in BANNED_TITLE_PARTS):
-			print(f'Note: Skipping {title} because its title does not fit the expected pattern.')
+			print(f'Note: Skipping [[{title}]] because its title does not fit the expected pattern.')
 			continue
 		lang = title.removeprefix('Wiktionary:About ')
 		if lang in args.skip:
 			continue
 		if any(word[0].islower() for word in lang.split()):
-			print(f'Note: Skipping {title} because its language would not be titlecased.')
+			print(f'Note: Skipping [[{title}]] because its language would not be titlecased.')
 			continue
 		new_title = 'Wiktionary:' + lang + ' entry guidelines'
 		backlinks = [bl for bl in page.backlinks(follow_redirects=False) if is_backlink_problematic(bl.title(), lang)]
 		if backlinks:
-			print(f'\nStopping at {title} because it has the following backlinks:')
+			print(f'\nStopping at [[{title}]] because it has the following backlinks:')
 			for bl in backlinks[:BACKLINK_DISPLAY_MAX]:
 				print(f'\t{bl.title()}')
 			if len(backlinks) > BACKLINK_DISPLAY_MAX:
@@ -72,15 +72,15 @@ def main():
 				pywikibot_helpers.advanced_move(page, new_title, MOVE_SUMMARY, backlinks='none', dry_run=args.dry_run)
 				new_page = pywikibot.Page(site, new_title)
 			except pywikibot.exceptions.LockedPageError:
-				print(f'Warning: Skipping {title} because the page is protected (so I can\'t move it).')
+				print(f'Warning: Skipping [[{title}]] because the page is protected (so I can\'t move it).')
 				continue
 		move_count += 1
 
 		# Update backlinks
 		for bl in backlinks:
 			bl_title = bl.title()
-			if bl_title.startswith('Template:') and not bl_title.endswith('/documentation'):
-				print(f'Warning: {bl_title} links to {title}, but I am not going to touch it since it\'s a template.')
+			if (bl_title.startswith('Template:') or bl_title.startswith('Module:')) and not bl_title.endswith('/documentation'):
+				print(f'Warning: [[{bl_title}]] links to [[{title}]], but I am NOT going to touch it since it\'s a template or module.')
 				continue
 			is_lang_code_redirect = bool(re.fullmatch(r'Wiktionary:A[A-Z]{2,3}(-[A-Z]{3})?', bl_title))
 			update_links(bl, title, new_title, skip_confirmation=is_lang_code_redirect, dry_run=args.dry_run)
@@ -91,7 +91,7 @@ def main():
 		try:
 			cat_link = next(link for link in wikitext.wikilinks if link.title == LANG_CONS_CAT_TITLE)
 		except StopIteration:
-			print(f'Warning: Unable to find category link in {new_title} to {LANG_CONS_CAT_TITLE}.')
+			print(f'Warning: Unable to find category link in [[{new_title}]] to [[{LANG_CONS_CAT_TITLE}]].')
 			continue
 		old_sort_key = cat_link.text
 		# Modifies wikitext
@@ -101,11 +101,12 @@ def main():
 		if old_sort_key == lang:
 			pywikibot_helpers.edit(new_page, wikitext.string, SORT_KEY_SUMMARY, skip_confirmation=True, dry_run=args.dry_run, indent='\t')
 		else:
-			print(f'Note: The language consideration page\'s sort key is "{old_sort_key}", which does not match the language ({lang}), so I am NOT going to attempt to remove the sort key.')
+			print(f'Note: The sort key used at [[{new_title}]] is "{old_sort_key}", which does not match the language ({lang}), so I am NOT going to attempt to remove the sort key.')
+		print()
 
 		# Confirm that all backlinks have been addressed
 		remaining_backlinks = list(page.backlinks(follow_redirects=False))
-		print(f'The following backlinks to {title} remain:')
+		print(f'The following backlinks to [[{title}]] remain:')
 		for bl in remaining_backlinks[:BACKLINK_DISPLAY_MAX]:
 			print(f'\t{bl.title()}')
 		if len(remaining_backlinks) > BACKLINK_DISPLAY_MAX:
@@ -122,7 +123,8 @@ def update_links(page: pywikibot.Page, old_target: str, new_target: str, skip_co
 				link.text = new_target.partition(':')[2]
 	summary = REDIRECT_SUMMARY if original_text[:9].casefold() == '#redirect' else f'Updated links to [[{new_target}]]'
 	if not pywikibot_helpers.edit(page, wikitext.string, summary, skip_confirmation, dry_run, indent='\t'):
-		print(f'\tWarning: Unable to update the link to {old_target} at {page.title()}.')
+		print(f'\tWarning: Did NOT update the link to [[{old_target}]] at [[{page.title()}]].')
+	print()
 
 def is_backlink_problematic(backlink: str, lang: str) -> bool:
 	for good_prefix in ACCEPTABLE_BACKLINK_PREFIXES:

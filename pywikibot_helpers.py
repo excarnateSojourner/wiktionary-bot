@@ -39,21 +39,21 @@ def move_page_or_update_redirect(old_page: pywikibot.Page, new_title: str, reaso
 	old_title = old_page.title()
 
 	if dry_run:
-		print(f'Would move {old_title} to {new_title}.')
+		print(f'Would move [[{old_title}]] to [[{new_title}]].')
 	else:
 		if startswith_casefold(old_page.text, REDIRECT_PREFIX):
-			print(f'Updating {old_title} to redirect to {new_title}.')
+			print(f'Updating [[{old_title}]] to redirect to [[{new_title}]].')
 			wikitext = wikitextparser.parse(old_page.text)
 			redirect_link = next(wikitext.wikilinks)
 			redirect_link.title = new_title
 			edit(old_page, wikitext.string, reason, skip_confirmation=True, dry_run=dry_run)
 		else:
-			print(f'Moving {old_title} to {new_title}.')
+			print(f'Moving [[{old_title}]] to [[{new_title}]].')
 			try:
 				old_page.move(new_title, reason, movesubpages=False)
 			# If the parent page has already been moved, proceed normally
 			except pywikibot.exceptions.ArticleExistsConflictError:
-				print(f'Warning: Skipping {old_title} because {new_title} already exists.')
+				print(f'Warning: Skipping [[{old_title}]] because [[{new_title}]] already exists.')
 				pass
 
 def update_backlinks(old_page: pywikibot.Page, new_title: str, type_: str = 'all', redirect_reason: str | None = None, link_reason: str | None = None, skip_confirmation: bool = False, dry_run: bool = False) -> None:
@@ -74,15 +74,15 @@ def update_backlinks_single_page(old_page: pywikibot.Page, new_title: str, type_
 
 	for source_page in old_page.backlinks(follow_redirects=False):
 		source_title = source.title()
-		if source_title.startswith('Template:') and not source_title.endswith('/documentation'):
-			print(f'\tWarning: {source_title} links to {old_title}, but I am NOT going to try to edit it since it\'s a template.')
+		if (source_title.startswith('Template:') or source_title.startswith('Module:')) and not source_title.endswith('/documentation'):
+			print(f'\tWarning: [[{source_title}]] links to [[{old_title}]], but I am NOT going to try to edit it since it\'s a template or module.')
 			continue
 
 		# If source_page is a redirect to old_page
 		if startswith_casefold(source_page.text, REDIRECT_PREFIX):
 			if type_ == 'links':
 				continue
-			specific_reason = redirect_reason or f'Moved {old_title} to {new_title}'
+			specific_reason = redirect_reason or f'Moved [[{old_title}]] to [[{new_title}]]'
 		# If source_page links to old_page
 		else:
 			if type_ == 'redirects':
@@ -98,7 +98,7 @@ def update_backlinks_single_page(old_page: pywikibot.Page, new_title: str, type_
 				if ':' in old_title and link.text == old_title.partition(':')[2]:
 					link.text = new_title.partition(':')[2]
 		if not edit(page, wikitext.string, specific_reason, skip_confirmation, dry_run, indent='\t\t'):
-			print(f'\tWarning: Unable to update the link to {old_target} at {page.title()}.')
+			print(f'\tWarning: Unable to update the link to [[{old_target}]] at [[{page.title()}]].')
 
 def edit(page: pywikibot.Page, new_text: str, reason: str, skip_confirmation: bool = False, dry_run: bool = False, indent: str = '') -> None:
 	'''
@@ -116,12 +116,12 @@ def edit(page: pywikibot.Page, new_text: str, reason: str, skip_confirmation: bo
 	title = page.title()
 	diff = difflib.unified_diff(page.text.splitlines(keepends=True), new_text.splitlines(keepends=True), n=1)
 	if not diff:
-		print_with_indent(f'Warning: Refusing to edit because the new text is identical to the existing text.')
+		print_with_indent(f'Warning: Refusing to edit [[{title}]] because the new text is identical to the existing text.')
 		return False
 	if dry_run:
-		print_with_indent(f'Would make the following edit at {title}:')
+		print_with_indent(f'Would make the following edit at [[{title}]]:')
 	else:
-		print_with_indent(f'Making the following edit at {title}:')
+		print_with_indent(f'Making the following edit at [[{title}]]:')
 	for line in diff:
 		print_with_indent(f'\t{line}')
 	print()
@@ -136,7 +136,7 @@ def edit(page: pywikibot.Page, new_text: str, reason: str, skip_confirmation: bo
 		try:
 			page.save(summary=reason)
 		except pywikibot.exceptions.LockedPageError:
-			print_with_indent(f'Error: Unable to save edit at {title} because the page is protected.')
+			print_with_indent(f'Error: Unable to save edit at [[{title}]] because the page is protected.')
 			return False
 	return True
 
