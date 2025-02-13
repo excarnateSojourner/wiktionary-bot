@@ -14,7 +14,7 @@ SORT_KEY_SUMMARY = 'Removed redundant sort key'
 VERBOSE_FACTOR = 10
 BANNED_TITLE_PARTS = ['/', 'language', 'script', 'transliteration']
 # Reconstruction backlinks are acceptable because because [[Template:reconstructed]] links to the language consideration page for the term's language, causing every term in a reconstructed language to be a backlink
-ACCEPTABLE_BACKLINK_PREFIXES = ['Talk:', 'User:', 'Reconstruction:', 'Wiktionary:Beer parlour', 'Wiktionary:Etymology scriptorium', 'Wiktionary:Information desk', 'Wiktionary:Grease pit', 'Wiktionary:Tea room', 'Wiktionary:Requests for ', 'Wiktionary:Translation requests/archive', 'Wiktionary:News for editors/Archive', 'Wiktionary:Votes/']
+ACCEPTABLE_BACKLINK_PREFIXES = ['Talk:', 'User:', 'Reconstruction:', 'Wiktionary:Beer parlour', 'Wiktionary:Etymology scriptorium', 'Wiktionary:Information desk', 'Wiktionary:Grease pit', 'Wiktionary:Tea room', 'Wiktionary:Requests for ', 'Wiktionary:Translation requests/archive', 'Wiktionary:News for editors/Archive', 'Wiktionary:Votes/', 'Wiktionary:Language treatment requests']
 LANG_CONS_CAT_TITLE = 'Category:Wiktionary language considerations'
 BACKLINK_DISPLAY_MAX = 200
 
@@ -79,7 +79,7 @@ def main():
 		# Update backlinks
 		for bl in backlinks:
 			bl_title = bl.title()
-			if bl_title.startswith('Template:'):
+			if bl_title.startswith('Template:') and not bl_title.endswith('/documentation'):
 				print(f'Warning: {bl_title} links to {title}, but I am not going to touch it since it\'s a template.')
 				continue
 			is_lang_code_redirect = bool(re.fullmatch(r'Wiktionary:A[A-Z]{2,3}(-[A-Z]{3})?', bl_title))
@@ -115,9 +115,11 @@ def update_links(page: pywikibot.Page, old_target: str, new_target: str, skip_co
 	wikitext = wikitextparser.parse(page.text)
 	original_text = wikitext.string
 	for link in wikitext.wikilinks:
-		if link.title == old_target:
+		if link.title.removeprefix(':').replace('WT:', 'Wiktionary:') == old_target:
 			# Modifies wikitext
 			link.title = new_target
+			if link.text == old_target.partition(':')[2]:
+				link.text = new_target.partition(':')[2]
 	summary = REDIRECT_SUMMARY if original_text[:9].casefold() == '#redirect' else f'Updated links to [[{new_target}]]'
 	if not pywikibot_helpers.edit(page, wikitext.string, summary, skip_confirmation, dry_run, indent='\t'):
 		print(f'\tWarning: Unable to update the link to {old_target} at {page.title()}.')
