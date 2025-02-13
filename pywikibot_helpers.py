@@ -22,46 +22,60 @@ def advanced_move(old_page: pywikibot.Page, new_title: str, move_reason: str, ba
 	dry_run: Indicates that no moves or edits should actually be made, but these actions should just be previewed.
 	'''
 
+	move_page_or_update_redirect(old_page, new_title, move_reason, dry_run)
+	if backlinks != 'none':
+		update_backlinks(old_page, new_title, backlinks, redirect_reason, link_reason, dry_run=dry_run)
+
+	subpage_prefix = f'{old_page.title()}/'
+	# Despite pywikibot.BasePage.move() having a movesubpages parameter that defaults to True, this method does not actually move subpages in my experience as of pywikibot v9.6.1.
+	if not ignore_subpages:
+		for subpage in pywikibot.pagegenerators.PrefixingPageGenerator(subpage_prefix):
+			new_subpage_title = f'{new_title}/{subpage.title()[len(subpage_prefix):]}'
+			move_page_or_update_redirect(old_page, new_subpage_title, move_reason, dry_run)
+			if backlinks != 'none':
+				update_backlinks(subpage, new_subpage_title, backlinks, redirect_reason, link_reason, dry_run=dry_run)
+
+def move_page_or_update_redirect(old_page: pywikibot.Page, new_title: str, reason: str, dry_run: bool = False):
 	old_title = old_page.title()
 
 	if dry_run:
 		print(f'Would move {old_title} to {new_title}.')
 	else:
-		try:
+		if startswith_casefold(old_page.text, REDIRECT_PREFIX):
+			print(f'Updating {old_title} to redirect to {new_title}.')
+			wikitext = wikitextparser.parse(old_page.text)
+			redirect_link = next(wikitext.wikilinks)
+			redirect_link.title = new_title
+			edit(old_page, wikitext.string, reason, skip_confirmation=True, dry_run=dry_run)
+		else:
 			print(f'Moving {old_title} to {new_title}.')
-			old_page.move(new_title, move_reason, movesubpages=False)
-		# If the parent page has already been moved, proceed normally
-		except pywikibot.exceptions.ArticleExistsConflictError:
-			print(f'Skipping {old_title} because {new_title} already exists.')
-			pass
-	if backlinks != 'none':
-		update_backlinks(old_page, new_title, backlinks, redirect_reason, link_reason, dry_run=dry_run)
-	subpage_prefix = f'{old_title}/'
-	# Despite pywikibot.BasePage.move() having a movesubpages parameter that defaults to True, this method does not actually move subpages in my experience as of pywikibot v9.6.1.
-	if not ignore_subpages:
-		for subpage in pywikibot.pagegenerators.PrefixingPageGenerator(subpage_prefix):
-			new_subpage_title = f'{new_title}/{subpage.title()[len(subpage_prefix):]}'
-			if dry_run:
-				print(f'Would move {subpage.title()} to {new_subpage_title}.')
-			else:
-				print(f'Moving {subpage.title()} to {new_subpage_title}.')
-				subpage.move(new_subpage_title, move_reason, movesubpages=False)
-			if backlinks != 'none':
-				update_backlinks(subpage, new_subpage_title, backlinks, redirect_reason, link_reason, dry_run=dry_run)
+			try:
+				old_page.move(new_title, reason, movesubpages=False)
+			# If the parent page has already been moved, proceed normally
+			except pywikibot.exceptions.ArticleExistsConflictError:
+				print(f'Warning: Skipping {old_title} because {new_title} already exists.')
+				pass
 
 def update_backlinks(old_page: pywikibot.Page, new_title: str, type_: str = 'all', redirect_reason: str | None = None, link_reason: str | None = None, skip_confirmation: bool = False, dry_run: bool = False) -> None:
 	'''
+	A wrapper that calls update_backlinks_single_page on a given page and its talk page. (If a talk page is given it and its corresponding normal page are moved.)
 	type_: Indicates which kinds of backlinks should be updated.
 		'all': Both redirects and links from other pages.
 		'redirects': Just redirects.
 		'links': Just links from other pages.
 	skip_confirmation: See edit().
 	'''
+	update_backlinks_single_page(old_page, new_title, type_, redirect_reason, link_reason, skip_confirmation, dry_run)
+	new_page = pywikibot.Page(old_page.site, new_title)
+	update_backlinks_single_page(old_page.toggleTalkPage(), new_page.toggleTalkPage().title(), type_, redirect_reason, link_reason, skip_confirmation, dry_run)
+
+def update_backlinks_single_page(old_page: pywikibot.Page, new_title: str, type_: str = 'all', redirect_reason: str | None = None, link_reason: str | None = None, skip_confirmation: bool = False, dry_run: bool = False) -> None:
 	old_title = old_page.title()
+
 	for source_page in old_page.backlinks(follow_redirects=False):
 		source_title = source.title()
 		if source_title.startswith('Template:') and not source_title.endswith('/documentation'):
-			print(f'\tWarning: {source_title} links to {old_title}, but I am not going to try to edit it since it\'s a template.')
+			print(f'\tWarning: {source_title} links to {old_title}, but I am NOT going to try to edit it since it\'s a template.')
 			continue
 
 		# If source_page is a redirect to old_page
