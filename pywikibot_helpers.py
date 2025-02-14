@@ -31,7 +31,7 @@ def advanced_move(old_page: pywikibot.Page, new_title: str, move_reason: str, ba
 	if not ignore_subpages:
 		for subpage in pywikibot.pagegenerators.PrefixingPageGenerator(subpage_prefix):
 			new_subpage_title = f'{new_title}/{subpage.title()[len(subpage_prefix):]}'
-			move_page_or_update_redirect(old_page, new_subpage_title, move_reason, dry_run)
+			move_page_or_update_redirect(subpage, new_subpage_title, move_reason, dry_run)
 			if backlinks != 'none':
 				update_backlinks(subpage, new_subpage_title, backlinks, redirect_reason, link_reason, dry_run=dry_run)
 
