@@ -13,11 +13,12 @@ MOVE_SUMMARY = 'Moved to match the title of [[Wiktionary:English entry guideline
 REDIRECT_SUMMARY = 'Moved target to match the title of [[Wiktionary:English entry guidelines]] per [[Wiktionary talk:English entry guidelines#RFM discussion: November 2015–August 2018|old RFM]] and [[Wiktionary:Requests for moves, mergers and splits#Wiktionary:English entry guidelines vs "About (language)" in every other language|new RFM]]'
 SORT_KEY_SUMMARY = 'Removed redundant sort key'
 VERBOSE_FACTOR = 10
-BANNED_TITLE_PARTS = ['/', 'language', 'script', 'transliteration']
+BANNED_TITLE_PARTS = ['/', 'language', 'script', 'romanization', 'transliteration']
 # Reconstruction backlinks are acceptable because because [[Template:reconstructed]] links to the language consideration page for the term's language, causing every term in a reconstructed language to be a backlink
 ACCEPTABLE_BACKLINK_PREFIXES = ['Talk:', 'User:', 'Reconstruction:', 'Wiktionary:Beer parlour', 'Wiktionary:Etymology scriptorium', 'Wiktionary:Information desk', 'Wiktionary:Grease pit', 'Wiktionary:Tea room', 'Wiktionary:Requests for ', 'Wiktionary:Translation requests/archive', 'Wiktionary:News for editors/Archive', 'Wiktionary:Votes/', 'Wiktionary:Language treatment requests']
 LANG_CONS_CAT_TITLE = 'Category:Wiktionary language considerations'
 BACKLINK_DISPLAY_MAX = 200
+MAX_MAINSPACE_BACKLINKS = 12
 
 def main():
 	parser = argparse.ArgumentParser()
@@ -74,6 +75,10 @@ def main():
 
 		# Update backlinks
 		for link_target_title, links in backlinks.items():
+			non_mainspace_bls = [link for link in links if ':' in link.title()]
+			if len(links) - len(non_mainspace_bls) > MAX_MAINSPACE_BACKLINKS:
+				print(f'Warning: Skipping {len(links) - len(non_mainspace_bls)} backlinks which are in mainspace.')
+				links = non_mainspace_bls
 			subpage_part = link_target_title.partition('/')[2]
 			new_link_target_title = f'{new_title}/{subpage_part}' if subpage_part else new_title
 			for bl in links:
@@ -89,18 +94,17 @@ def main():
 		original_text = wikitext.string
 		try:
 			cat_link = next(link for link in wikitext.wikilinks if link.title == LANG_CONS_CAT_TITLE)
+			old_sort_key = cat_link.text
+			# Modifies wikitext
+			cat_link.string = f'[[{LANG_CONS_CAT_TITLE}]]'
+			lang_lower = lang.casefold()
+			# Middle Dutch had "Dutch, Middle" as its sort key, which should have been preserved
+			if old_sort_key.rstrip() == lang:
+				pywikibot_helpers.edit(new_page, wikitext.string, SORT_KEY_SUMMARY, skip_confirmation=True, dry_run=args.dry_run, indent='\t')
+			else:
+				print(f'Note: The sort key used at [[{new_title}]] is "{old_sort_key}", which does not match the language ({lang}), so I am NOT going to attempt to remove the sort key.')
 		except StopIteration:
 			print(f'Warning: Unable to find category link in [[{new_title}]] to [[{LANG_CONS_CAT_TITLE}]].')
-			continue
-		old_sort_key = cat_link.text
-		# Modifies wikitext
-		cat_link.string = f'[[{LANG_CONS_CAT_TITLE}]]'
-		lang_lower = lang.casefold()
-		# Middle Dutch had "Dutch, Middle" as its sort key, which should have been preserved
-		if old_sort_key.rstrip() == lang:
-			pywikibot_helpers.edit(new_page, wikitext.string, SORT_KEY_SUMMARY, skip_confirmation=True, dry_run=args.dry_run, indent='\t')
-		else:
-			print(f'Note: The sort key used at [[{new_title}]] is "{old_sort_key}", which does not match the language ({lang}), so I am NOT going to attempt to remove the sort key.')
 
 		# Confirm that all backlinks have been addressed
 		get_and_print_backlinks(page, lang)
@@ -128,7 +132,7 @@ def update_links(page: pywikibot.Page, old_target: str, new_target: str, skip_co
 	wikitext = wikitextparser.parse(page.text)
 	original_text = wikitext.string
 	for link in wikitext.wikilinks:
-		if link.title.removeprefix(':').replace('WT:', 'Wiktionary:') == old_target:
+		if link.title.removeprefix(':').replace('WT:', 'Wiktionary:').replace('_', ' ') == old_target:
 			# Modifies wikitext
 			link.title = new_target
 			if link.text == old_target.partition(':')[2]:
