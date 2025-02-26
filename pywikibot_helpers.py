@@ -29,7 +29,7 @@ def advanced_move(old_page: pywikibot.Page, new_title: str, move_reason: str, ba
 	subpage_prefix = f'{old_page.title()}/'
 	# Despite pywikibot.BasePage.move() having a movesubpages parameter that defaults to True, this method does not actually move subpages in my experience as of pywikibot v9.6.1.
 	if not ignore_subpages:
-		for subpage in pywikibot.pagegenerators.PrefixingPageGenerator(subpage_prefix):
+		for subpage in pywikibot.pagegenerators.PrefixingPageGenerator(subpage_prefix, site=old_page.site):
 			new_subpage_title = f'{new_title}/{subpage.title()[len(subpage_prefix):]}'
 			move_page_or_update_redirect(subpage, new_subpage_title, move_reason, dry_run)
 			if backlinks != 'none':
@@ -44,7 +44,7 @@ def move_page_or_update_redirect(old_page: pywikibot.Page, new_title: str, reaso
 		if startswith_casefold(old_page.text, REDIRECT_PREFIX):
 			print(f'Updating [[{old_title}]] to redirect to [[{new_title}]].')
 			wikitext = wikitextparser.parse(old_page.text)
-			redirect_link = next(wikitext.wikilinks)
+			redirect_link = wikitext.wikilinks[0]
 			redirect_link.title = new_title
 			edit(old_page, wikitext.string, reason, skip_confirmation=True, dry_run=dry_run)
 		else:
